@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>VLAN Membership</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<link rel="stylesheet" type="text/css" href="style.css?v6.3">
+<script  src="frame.js?v6.3" type="text/javascript"></script>
+<script  src="function.js?v6.3" type="text/javascript"></script>
+</head>
+
+<body onload="initMemberAndMirror('Membership'); initErrMsg('802.1Q');">
+<form method="post" action="8021qMembe.cgi">
+<table class="detailsAreaContainer">
+<tr>
+<td><table class="tableStyle">
+<tr>
+<script>tbhdrTable('VLAN Membership','advance8021qVlanMember')</script>
+</tr>
+<tr><td class="topTitleBottomBar" colspan="2"></td></tr>
+<tr><td class="paddingTableBody" colspan="2"><table class="tableStyle" id="tbl1" style="width:745px;">
+<tr class="trBgColor"><td><span class="left_th">Options</span>
+<div class="right_th">
+	<label>VLAN ID</label>
+	<select name="VLAN_ID" id="vlanIdOption">
+	
+        <option value="1" >1</option>
+	
+        <option value="100" selected>100</option>
+	
+        </select>
+	<input type="hidden" name="VLAN_ID_HD" value="100">
+	<label>Group Operation</label>
+	<select name="" id="groupOpera"><option value="-1"></option><option value="0">Untag All</option><option value="1">Tag All</option><option value="2">Remove All</option></select>
+</div></td></tr>
+<tr class="">
+  <td class="borderRight textCenter" id="unit1" style="padding-top:10px">
+	<span class="ports">Ports</span>
+	
+  	<div class="portMember margin"><span class="portword">1</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">2</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">3</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">4</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">5</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">6</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">7</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  	<div class="portMember margin"><span class="portword">8</span><div class="panels"><div class="portImage"></div></div></div>
+	
+  </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+<input type="hidden" name='hash' id='hash' value='12345'>
+<input name="hiddenMem" id="hiddenMem" value="22111111" type="hidden">
+<input type=hidden name='err_msg' id='err_msg' value='' disabled>
+</form>
+<script>
+var str = CreateButtons('button','Cancel','javaScript:void(0)','btn_Cancel','off');
+str += CreateButtons('button','Apply','javaScript:void(0)','btn_Apply','off');
+PaintButtons(str);
+</script>
+</body>
+</html>

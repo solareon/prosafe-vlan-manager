@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>PVID Configuration</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<link rel="stylesheet" type="text/css" href="style.css?v6.3">
+<script  src="frame.js?v6.3" type="text/javascript"></script>
+<script  src="function.js?v6.3" type="text/javascript"></script>
+</head>
+
+<body onload="initTableCss();initErrMsg('Port PVID');">
+<form method="post" action="portPVID.cgi">
+<table class="detailsAreaContainer">
+<tr>
+<td><table class="tableStyle">
+<tr>
+<script>tbhdrTable('PVID Configuration','advance8021qPvid')</script>
+</tr>
+<tr><td class="topTitleBottomBar" colspan="2"></td></tr>
+<tr><td class="paddingTableBody" colspan="2"><table class="tableStyle" id="tbl2" style='width:745px;'>
+<tr><td class="def_TH spacer4Percent def_center"><input type="checkbox" name="checkALL" rownumber="" value="notchecked" onclick="checkAllCheckedRows('portID')" /></td>
+    <td class="def_TH">Port</td><td class="def_TH">PVID</td></tr>
+<tr id="g_1_1" exclusive="">
+<td class="def_TH def_center"></td>
+<td class="def_TH" sel="text">
+</td>
+<td class="def_TH" sel="input"><input type="text" name="pvid" value="" maxlength="4" size="20" disabled oninput="return checkForNumber(1,4094,this);"">
+</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port1" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">1<input type="hidden" value="1"></td>
+<td class="def" sel="input">1</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port2" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">2<input type="hidden" value="2"></td>
+<td class="def" sel="input">1</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port3" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">3<input type="hidden" value="3"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port4" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">4<input type="hidden" value="4"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port5" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">5<input type="hidden" value="5"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port6" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">6<input type="hidden" value="6"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port7" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">7<input type="hidden" value="7"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+<tr class="portID"><td class="def firstCol def_center"><input type="checkbox" class='checkbox' name="port8" rownumber="" value="checked" onclick="checkBoxOnclick();"></td>
+<td class="def" sel="text">8<input type="hidden" value="8"></td>
+<td class="def" sel="input">100</td>
+</tr>
+
+</table>
+</td></tr>
+</table>
+</td></tr>
+<input type="hidden" name='hash' id='hash' value='12345'>
+<input type=hidden name='err_msg' id='err_msg' value='' disabled>
+</form>
+<script>
+var str = CreateButtons('button','Cancel','javaScript:void(0)','btn_Cancel','off');
+str += CreateButtons('button','Apply','javaScript:void(0)','btn_Apply','off');
+PaintButtons(str);
+</script>
+</body>
+</html>

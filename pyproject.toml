@@ -1,14 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
 [project]
 name = "prosafe-vlan-manager"
 version = "0.1.0"
-description = "a tool to manage VLAN on some netgear prosafe switches"
+description = "Declarative VLAN management for Netgear ProSAFE switches"
 readme = "README.md"
 authors = [{ name = "Potato", email = "nikko@faint.day" }]
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
-    "beautifulsoup4~=4.12.2",
-    "click~=8.1.7",
-    "pydantic~=2.3.0",
-    "requests~=2.31.0",
+    "beautifulsoup4>=4.14,<5",
+    "click>=8.3,<9",
+    "pydantic>=2.12,<3",
+    "requests>=2.32.5,<3",
 ]
 license = "AGPL-3.0-only"
+
+[project.scripts]
+prosafe = "prosafe.cli:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<10",
+    "ruff>=0.14,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["prosafe"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

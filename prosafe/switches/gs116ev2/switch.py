@@ -1,16 +1,30 @@
-from collections import defaultdict
-from io import BytesIO
-from typing import Dict, List, Set
 import re
+from collections import defaultdict
 from functools import partial
+from io import BytesIO
 
-from requests import Session
 from bs4 import BeautifulSoup
+from requests import Session
 
+from ..general import (
+    BaseSwitch,
+    PvidConfig,
+    SingleVlanConfig,
+    VlanConfig,
+    VlanId,
+    VlanPortMembership,
+)
+from .consts import (
+    SW_URI_8021Q_CONF,
+    SW_URI_8021Q_MEMBERSHIP,
+    SW_URI_8021Q_PVID,
+    SW_URI_BACKUP,
+    SW_URI_INDEX,
+    SW_URI_INFO,
+    SW_URI_LOGIN,
+    SW_URI_RESTORE,
+)
 from .utils import password_kdf
-from .consts import *
-from ..general import BaseSwitch, SingleVlanConfig, VlanPortMembership, VlanId, PortId, PvidConfig, VlanConfig
-
 
 BeautifulSoup = partial(BeautifulSoup, features="html.parser")
 
@@ -31,6 +45,8 @@ class SwitchSession(Session):
 
 class Switch(BaseSwitch):
     _port_count: int = 16
+    _retain_vlan_one = True
+    _require_vlan_one_member = True
     _address: str
     _password: str
     _s: SwitchSession
@@ -41,10 +57,10 @@ class Switch(BaseSwitch):
     _pvid_pattern = re.compile("(?<=var pvid = ')[0-9?]+(?=';)")
 
     def __init__(self, address: str, password: str) -> None:
-        if address.startswith('http'):
+        if address.startswith("http"):
             self._address = address
         else:
-            self._address = 'http://' + address
+            self._address = "http://" + address
 
         self._password = password
         self._s = SwitchSession(self._address)
@@ -52,93 +68,75 @@ class Switch(BaseSwitch):
     def login(self):
         self._s.get(SW_URI_LOGIN)
         login_form = {
-            'submitId': 'pwdLogin',
-            'password': password_kdf(self._password),
-            'submitEnd': '',
+            "submitId": "pwdLogin",
+            "password": password_kdf(self._password),
+            "submitEnd": "",
         }
         res = self._s.post(SW_URI_LOGIN, data=login_form)
-        redirect = BeautifulSoup(res.text).find('script').text.strip()
-        assert SW_URI_INDEX + '?0' in redirect, \
-            "Login failed, check your password!"
+        redirect = BeautifulSoup(res.text).find("script").text.strip()
+        assert SW_URI_INDEX + "?0" in redirect, "Login failed, check your password!"
 
         # cache secure rand
         res = self._s.get(SW_URI_INDEX)
         matched = self._secure_rand_pattern.search(res.text)
-        assert matched != None, "Secure rand can't be found in the response text! Aborting!"
+        assert matched is not None, "Secure rand can't be found in the response text! Aborting!"
         self._secure_rand = matched.group(0)
 
     def logout(self):
         logout_form = {
-            'submitId': 'logoutBtn',
-            'secureRand': self._secure_rand,
-            'submitEnd': '',
+            "submitId": "logoutBtn",
+            "secureRand": self._secure_rand,
+            "submitEnd": "",
         }
         res = self._s.post(SW_URI_INDEX, data=logout_form)
         res.raise_for_status()
         self._secure_rand = None
 
-    def fetch_information(self) -> Dict[str, str]:
+    def fetch_information(self) -> dict[str, str]:
         res = self._s.get(SW_URI_INFO)
         matched = self._general_info_pattern.search(res.text)
-        if matched == None:
+        if matched is None:
             return dict()
-        data_list = matched.group(0).split('?')
+        data_list = matched.group(0).split("?")
         data = {
-            'Product Name':     data_list[0],
-            'Switch Name':      data_list[1],
-            'MAC Address':      data_list[2],
-            'Firmware Version': data_list[3],
-            'DHCP Mode':        data_list[4],
-            'IP Address':       data_list[5],
-            'Subnet Mask':      data_list[6],
-            'Gateway Address':  data_list[7],
-            'Serial Number':    data_list[8],
+            "Product Name": data_list[0],
+            "Switch Name": data_list[1],
+            "MAC Address": data_list[2],
+            "Firmware Version": data_list[3],
+            "DHCP Mode": data_list[4],
+            "IP Address": data_list[5],
+            "Subnet Mask": data_list[6],
+            "Gateway Address": data_list[7],
+            "Serial Number": data_list[8],
         }
         return data
-
-    def _enable_8021q_vlan(self):
-        form_data = {
-            "submitId": "vlanDot1VidCfg",
-            "secureRand": self._secure_rand,
-            "aDot1VLAN": "Enable",
-            "changeType": "1",
-            "addVid": "",
-            "delVid": "0",
-            "confirmOK": "0",
-            "submitEnd": "",
-        }
-        res = self._s.post(SW_URI_8021Q_CONF, data=form_data)
-        assert SW_URI_8021Q_CONF.strip('/') in res.text, "Failed to enable advanced 802.1Q VLAN! Maybe you need a re-login?"
 
     def fetch_vlan_membership(self) -> VlanConfig:
         res = self._s.get(SW_URI_8021Q_CONF)
         matched = self._vlanmem_pattern.search(res.text)
-        assert matched != None, f"No VLAN information found! Server response: {res.text}"
-        vlan_membership: VlanConfig = defaultdict(lambda: {i: VlanPortMembership.IGNORED for i in range(1, self._port_count + 1)})
-        vlan_groups = matched.group(0).split(',')
+        assert matched is not None, f"No VLAN information found! Server response: {res.text}"
+        vlan_membership: VlanConfig = defaultdict(
+            lambda: {i: VlanPortMembership.IGNORED for i in range(1, self._port_count + 1)}
+        )
+        vlan_groups = matched.group(0).split(",")
         for vlan in vlan_groups:
-            vlan_info = vlan.split('?')
+            vlan_info = vlan.split("?")
             vid = VlanId(vlan_info[0])
             # touch each vid, so it's created even if it's empty
             vlan_membership[vid]
             for pid, v in enumerate(vlan_info[1:], 1):
-                if v == 'T':
+                if v == "T":
                     vlan_membership[vid][pid] = VlanPortMembership.TAGGED
-                elif v == 'U':
+                elif v == "U":
                     vlan_membership[vid][pid] = VlanPortMembership.UNTAGGED
-                # else: # v==''
-                #     vlan_membership[vid][pid] = VlanPortMembership.IGNORED
         return dict(vlan_membership)
 
     def fetch_pvids(self) -> PvidConfig:
         res = self._s.get(SW_URI_8021Q_CONF)
         matched = self._pvid_pattern.search(res.text)
-        assert matched != None, f"No PVID information found! Server response: {res.text}"
-        pvids = matched.group(0).split('?')
-        pvid_config: PvidConfig = {
-            i: VlanId(v)
-            for i, v in enumerate(pvids, 1)
-        }
+        assert matched is not None, f"No PVID information found! Server response: {res.text}"
+        pvids = matched.group(0).split("?")
+        pvid_config: PvidConfig = {i: VlanId(v) for i, v in enumerate(pvids, 1)}
         return pvid_config
 
     def _add_vlan(self, vid: VlanId):
@@ -149,10 +147,11 @@ class Switch(BaseSwitch):
             "submitEnd": "",
         }
         res = self._s.post(SW_URI_8021Q_CONF, data=form_data)
-        assert SW_URI_8021Q_CONF.split('/')[-1] in res.text, \
+        assert SW_URI_8021Q_CONF.split("/")[-1] in res.text, (
             f"Cannot add VLAN! Server response: {res.text}"
+        )
 
-    def _delete_vlans(self, vids: List[VlanId]):
+    def _delete_vlans(self, vids: list[VlanId]):
         assert 1 not in vids, "VLAN 1 cannot be removed!"
         form_data = {
             "submitId": "vlanDot1VidCfg",
@@ -161,8 +160,9 @@ class Switch(BaseSwitch):
             "submitEnd": "",
         }
         res = self._s.post(SW_URI_8021Q_CONF, data=form_data)
-        assert SW_URI_8021Q_CONF.split('/')[-1] in res.text, \
+        assert SW_URI_8021Q_CONF.split("/")[-1] in res.text, (
             f"Cannot delete VLAN(s)! Server response: {res.text}"
+        )
 
     def _set_vlan_membership(self, vid: VlanId, membership: SingleVlanConfig):
         mask_member = 0
@@ -176,82 +176,64 @@ class Switch(BaseSwitch):
                 mask_tagged |= 1 << pid
 
         form_data = {
-            'submitId': 'vlanDot1TagCfg',
-            'secureRand': self._secure_rand,
-            'vid': vid,
-            'member': mask_member,
-            'tag': mask_tagged,
-            'submitEnd': '',
+            "submitId": "vlanDot1TagCfg",
+            "secureRand": self._secure_rand,
+            "vid": vid,
+            "member": mask_member,
+            "tag": mask_tagged,
+            "submitEnd": "",
         }
         # Posting to SW_URI_8021Q_CONF seems ok as well.
         # Maybe the only thing matters is the form data.
         res = self._s.post(SW_URI_8021Q_MEMBERSHIP, data=form_data)
         # when succeeded, it will jump to original page
         # the parameter is the VLAN to show
-        assert SW_URI_8021Q_MEMBERSHIP.split('/')[-1] + f"?{vid}" in res.text, \
+        assert SW_URI_8021Q_MEMBERSHIP.split("/")[-1] + f"?{vid}" in res.text, (
             f"Cannot update VLAN membership! Server response: {res.text}"
+        )
 
     def _set_pvids(self, pvids: PvidConfig):
         form = [
-            'submitId=vlanDot1PvidCfg',
-            f'secureRand={self._secure_rand}',
+            "submitId=vlanDot1PvidCfg",
+            f"secureRand={self._secure_rand}",
         ]
         # order matters, and keys dulplicated, so we need to construct the data ourselves
         for pid, vid in pvids.items():
-            form.append(f'port={pid}&pvid={vid}')
-        form.append('submitEnd=')
-        form_data = '&'.join(form)
-        res = self._s.post(SW_URI_8021Q_PVID, data=form_data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
-        assert SW_URI_8021Q_PVID.split('/')[-1] in res.text, \
+            form.append(f"port={pid}&pvid={vid}")
+        form.append("submitEnd=")
+        form_data = "&".join(form)
+        res = self._s.post(
+            SW_URI_8021Q_PVID,
+            data=form_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert SW_URI_8021Q_PVID.split("/")[-1] in res.text, (
             f"Cannot update PVIDs! Server response: {res.text}"
+        )
 
     def backup(self) -> bytes:
         r = self._s.get(SW_URI_BACKUP)
         r.raise_for_status()
-        data = bytes()
-        for i in r.iter_content():
-            data += i
-        return data
+        return r.content
 
     def restore(self, config: bytes):
-        assert len(config) <= 20480, \
+        assert len(config) <= 20480, (
             "Seriously? Config data over 20KBytes? I refuse to restore it! Please restore it manually."
-        files = {'config.cfg': BytesIO(config)}
+        )
+        files = {"config.cfg": BytesIO(config)}
         res = self._s.post(SW_URI_RESTORE, files=files)
 
         # about return value after '?':
         # 0: fault
         # 1: success, also inform the ui to logout, but it's not necessary for gs116ev2
-        assert SW_URI_RESTORE.split('/')[-1] + '?1' in res.text, \
+        assert SW_URI_RESTORE.split("/")[-1] + "?1" in res.text, (
             f"Cannot restore config! Server response: {res.text}"
+        )
         # anyway, logout
         self.logout()
 
-    def apply_vlan_config(self, membership: VlanConfig, pvids: PvidConfig):
-        # This is much simpler compared with GS108Ev3, since fewer restrictions present
-        # assume input configuration is valid(as is validated by config loader)
-        # however, we have to apply measures to prevent losing access to the device
-        # I haven't tried to disable all ports, but I think I should prevent it.
+    def _write_vlan_membership(self, vid: VlanId, membership: SingleVlanConfig):
+        self._set_vlan_membership(vid, membership)
 
-        old_vlans = self.fetch_vlan_membership()
-        new_vlans = membership
-
-        vids_old: Set[VlanId] = set(old_vlans.keys())
-        vids_new: Set[VlanId] = set(new_vlans.keys())
-        vids_to_add = vids_new - vids_old
-        # ensure VLAN 1 won't be removed
-        vids_to_remove = vids_old - vids_new - set([1])
-        # ensure there's at least one port enabled
-        for pid, pm in new_vlans.get(1, dict()).items():
-            if pm != VlanPortMembership.IGNORED:
-                break
-        else:
-            assert False, \
-                "You must have one port enabled, or you'll lose access to your switch!"
-
-        for vid in vids_to_add:
-            self._add_vlan(vid)
-        for vid, vm in new_vlans.items():
-            self._set_vlan_membership(vid, vm)
+    def _write_pvids(self, pvids: PvidConfig):
         self._set_pvids(pvids)
-        self._delete_vlans(list(vids_to_remove))
